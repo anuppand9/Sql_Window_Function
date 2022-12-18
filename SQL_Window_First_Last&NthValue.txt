@@ -1,0 +1,18 @@
+--class wise 1,2 and last
+
+with agg_mrks as (select s1.roll_num, s1.student_name,s1.stclass, sum(fullmarks) as full_mrks, sum(obtmarks) as obt_mrks
+                  from  student_new s1
+                  join exresult_new e1 on s1.roll_num::integer=e1.roll_num group by s1.roll_num, s1.student_name, s1.stclass order by s1.roll_num),
+     agg_rnk as (select first_value(obt_mrks) over wnd1 as firstpos,
+                        nth_value(obt_mrks,2) over wnd1  as secpos,
+                        last_value(obt_mrks) over wnd1 as lstpos
+                        from agg_mrks
+                        window wnd1 as (partition by stclass order by obt_mrks desc range between unbounded preceding and unbounded following))
+select *
+from agg_mrks where obt_mrks in (select firstpos from agg_rnk)
+union 
+select *
+from agg_mrks where obt_mrks in (select secpos from agg_rnk)
+union
+select *
+from agg_mrks where obt_mrks in (select lstpos from agg_rnk) order by stclass, obt_mrks desc;
